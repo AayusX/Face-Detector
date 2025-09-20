@@ -3,104 +3,235 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>AI Mood Detector</title>
+  <title>⚡ AI Mood Detector ⚡</title>
   <style>
+    @import url("https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600&display=swap");
+
     body {
-      background: #0a0a0a;
-      color: #00f2ff;
-      font-family: "Orbitron", sans-serif;
-      text-align: center;
       margin: 0;
-      overflow: hidden;
+      padding: 0;
+      font-family: "Fira Code", monospace;
+      background: black;
+      color: #00ffcc;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      min-height: 100vh;
+      padding: 20px;
     }
-    video, canvas {
-      position: absolute;
-      left: 50%;
-      transform: translateX(-50%);
-      top: 60px;
-      border: 3px solid #00f2ff;
-      border-radius: 16px;
-      box-shadow: 0 0 25px #00f2ff;
-    }
+
     h1 {
-      margin: 20px 0 0;
-      font-size: 28px;
-      text-shadow: 0 0 15px #00f2ff;
+      color: #00ffcc;
+      text-shadow: 0px 0px 20px #00ffcc;
     }
-    #mood {
-      margin-top: 540px;
-      font-size: 22px;
-      color: #ff00ff;
-      text-shadow: 0 0 20px #ff00ff, 0 0 40px #ff00ff;
+
+    .video-container {
+      position: relative;
+      width: 90%;
+      max-width: 700px;
+      border: 3px solid #00ffcc;
+      border-radius: 12px;
+      box-shadow: 0 0 20px #00ffcc;
+      overflow: hidden;
+      margin-bottom: 20px;
     }
-    #history {
+
+    video, canvas {
+      width: 100%;
+      display: block;
+    }
+
+    canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      pointer-events: none;
+    }
+
+    .terminal {
+      background: #111;
+      border: 2px solid #00ffcc;
+      border-radius: 10px;
+      box-shadow: 0px 0px 20px #00ffcc;
+      width: 90%;
+      max-width: 700px;
+      padding: 20px;
       margin-top: 15px;
+      box-sizing: border-box;
+    }
+
+    .mood-display {
+      font-size: 18px;
+      color: #00ffcc;
+      margin: 0;
+    }
+
+    button {
+      margin: 6px;
+      padding: 8px 14px;
+      font-family: inherit;
+      background: black;
+      border: 2px solid #00ffcc;
+      border-radius: 8px;
+      color: #00ffcc;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    button:hover {
+      background: #00ffcc;
+      color: black;
+    }
+
+    .history {
       font-size: 14px;
-      color: #888;
-      max-width: 90%;
-      margin-left: auto;
-      margin-right: auto;
-      word-wrap: break-word;
+      text-align: left;
+      margin-top: 10px;
+      max-height: 120px;
+      overflow-y: auto;
+    }
+
+    .status {
+      font-size: 13px;
+      margin-top: 10px;
+      color: #999;
     }
   </style>
 </head>
 <body>
   <h1>⚡ AI Mood Detector ⚡</h1>
-  <video id="video" width="480" height="360" autoplay muted></video>
-  <canvas id="overlay" width="480" height="360"></canvas>
-  <div id="mood">Detecting mood...</div>
-  <div id="history"></div>
 
-  <!-- Face API via CDN -->
-  <script defer src="https://cdn.jsdelivr.net/npm/face-api.js"></script>
+  <div class="video-container">
+    <video id="video" autoplay muted playsinline></video>
+    <canvas id="overlay"></canvas>
+  </div>
+
+  <div class="terminal">
+    <p id="mood" class="mood-display">Loading models...</p>
+    <div>
+      <button id="mirrorBtn">Toggle Mirror</button>
+      <button id="snapshotBtn">Take Snapshot</button>
+      <button id="resetBtn">Reset History</button>
+    </div>
+    <div class="history" id="history"></div>
+    <div class="status" id="status">Status: waiting...</div>
+  </div>
+
+  <!-- Face API -->
+  <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2"></script>
   <script>
     const video = document.getElementById("video");
-    const overlay = document.getElementById("overlay");
-    const ctx = overlay.getContext("2d");
+    const canvas = document.getElementById("overlay");
     const moodEl = document.getElementById("mood");
     const historyEl = document.getElementById("history");
-    let history = [];
+    const statusEl = document.getElementById("status");
+    const mirrorBtn = document.getElementById("mirrorBtn");
+    const snapshotBtn = document.getElementById("snapshotBtn");
+    const resetBtn = document.getElementById("resetBtn");
 
-    async function start() {
+    let mirror = true;
+    let moodHistory = JSON.parse(localStorage.getItem("moodHistory") || "[]");
+
+    // ✅ Update history UI
+    function updateHistory() {
+      historyEl.innerHTML = moodHistory.map((m, i) => `${i+1}. ${m}`).join("<br>");
+      localStorage.setItem("moodHistory", JSON.stringify(moodHistory));
+    }
+    updateHistory();
+
+    // ✅ Load models from working CDN repo
+    async function loadModels() {
       moodEl.textContent = "Loading models...";
-      await faceapi.nets.tinyFaceDetector.loadFromUri("https://cdn.jsdelivr.net/npm/face-api.js/weights");
-      await faceapi.nets.faceExpressionNet.loadFromUri("https://cdn.jsdelivr.net/npm/face-api.js/weights");
-
-      const stream = await navigator.mediaDevices.getUserMedia({ video: {} });
-      video.srcObject = stream;
-      moodEl.textContent = "Models loaded. Detecting mood...";
+      try {
+        const MODEL_URL = "https://justadudewhohacks.github.io/face-api.js/models";
+        await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
+        await faceapi.nets.faceExpressionNet.loadFromUri(MODEL_URL);
+        moodEl.textContent = "Models loaded! Starting camera...";
+      } catch (err) {
+        moodEl.textContent = "Model load failed ❌";
+        statusEl.textContent = "Error: " + err;
+        throw err;
+      }
     }
 
+    // ✅ Start video
+    async function startVideo() {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: {} });
+        video.srcObject = stream;
+        statusEl.textContent = "Camera started ✅";
+      } catch (err) {
+        statusEl.textContent = "Camera error: " + err;
+      }
+    }
+
+    // ✅ Snapshot function
+    function takeSnapshot() {
+      const snapCanvas = document.createElement("canvas");
+      snapCanvas.width = video.videoWidth;
+      snapCanvas.height = video.videoHeight;
+      const ctx = snapCanvas.getContext("2d");
+      if (mirror) {
+        ctx.translate(snapCanvas.width, 0);
+        ctx.scale(-1, 1);
+      }
+      ctx.drawImage(video, 0, 0);
+      const link = document.createElement("a");
+      link.download = "snapshot.png";
+      link.href = snapCanvas.toDataURL("image/png");
+      link.click();
+    }
+
+    // ✅ Mirror toggle
+    mirrorBtn.addEventListener("click", () => {
+      mirror = !mirror;
+      video.style.transform = mirror ? "scaleX(-1)" : "scaleX(1)";
+    });
+
+    snapshotBtn.addEventListener("click", takeSnapshot);
+
+    resetBtn.addEventListener("click", () => {
+      moodHistory = [];
+      updateHistory();
+      statusEl.textContent = "History cleared ✅";
+    });
+
+    // ✅ Detection loop
     video.addEventListener("play", () => {
-      const displaySize = { width: video.width, height: video.height };
-      faceapi.matchDimensions(overlay, displaySize);
+      const displaySize = { width: video.videoWidth, height: video.videoHeight };
+      canvas.width = displaySize.width;
+      canvas.height = displaySize.height;
+
+      const ctx = canvas.getContext("2d");
 
       setInterval(async () => {
         const detections = await faceapi
           .detectAllFaces(video, new faceapi.TinyFaceDetectorOptions())
           .withFaceExpressions();
 
-        ctx.clearRect(0, 0, overlay.width, overlay.height);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
         const resized = faceapi.resizeResults(detections, displaySize);
-        faceapi.draw.drawDetections(overlay, resized);
-        faceapi.draw.drawFaceExpressions(overlay, resized);
+        faceapi.draw.drawDetections(canvas, resized);
+        faceapi.draw.drawFaceExpressions(canvas, resized);
 
         if (detections.length > 0) {
-          const emotions = detections[0].expressions;
-          const mood = Object.keys(emotions).reduce((a, b) =>
-            emotions[a] > emotions[b] ? a : b
-          );
-          moodEl.textContent = `You look: ${mood}`;
-          history.push(mood);
-          if (history.length > 20) history.shift();
-          historyEl.textContent = "History: " + history.join(", ");
+          const exp = detections[0].expressions;
+          const mood = Object.keys(exp).reduce((a, b) => (exp[a] > exp[b] ? a : b));
+          moodEl.textContent = `Mood: ${mood}`;
+          if (moodHistory[moodHistory.length - 1] !== mood) {
+            moodHistory.push(mood);
+            if (moodHistory.length > 20) moodHistory.shift();
+            updateHistory();
+          }
         } else {
           moodEl.textContent = "No face detected";
         }
-      }, 300);
+      }, 200);
     });
 
-    start();
+    // ✅ Init
+    loadModels().then(startVideo);
   </script>
 </body>
 </html>
