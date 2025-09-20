@@ -1,12 +1,11 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>⚡ AI Mood Detector ⚡</title>
   <style>
     @import url("https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600&display=swap");
-
     body {
       margin: 0;
       padding: 0;
@@ -16,16 +15,13 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: flex-start;
       min-height: 100vh;
       padding: 20px;
     }
-
     h1 {
       color: #00ffcc;
-      text-shadow: 0px 0px 20px #00ffcc;
+      text-shadow: 0 0 20px #00ffcc;
     }
-
     .video-container {
       position: relative;
       width: 90%;
@@ -36,37 +32,32 @@
       overflow: hidden;
       margin-bottom: 20px;
     }
-
     video, canvas {
       width: 100%;
       display: block;
     }
-
     canvas {
       position: absolute;
       top: 0;
       left: 0;
       pointer-events: none;
     }
-
     .terminal {
       background: #111;
       border: 2px solid #00ffcc;
       border-radius: 10px;
-      box-shadow: 0px 0px 20px #00ffcc;
+      box-shadow: 0 0 20px #00ffcc;
       width: 90%;
       max-width: 700px;
       padding: 20px;
       margin-top: 15px;
       box-sizing: border-box;
     }
-
     .mood-display {
       font-size: 18px;
       color: #00ffcc;
       margin: 0;
     }
-
     button {
       margin: 6px;
       padding: 8px 14px;
@@ -78,12 +69,10 @@
       cursor: pointer;
       transition: background 0.2s;
     }
-
     button:hover {
       background: #00ffcc;
       color: black;
     }
-
     .history {
       font-size: 14px;
       text-align: left;
@@ -91,7 +80,6 @@
       max-height: 120px;
       overflow-y: auto;
     }
-
     .status {
       font-size: 13px;
       margin-top: 10px;
@@ -118,8 +106,8 @@
     <div class="status" id="status">Status: waiting...</div>
   </div>
 
-  <!-- Face API -->
-  <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2"></script>
+  <!-- Face API library via CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
   <script>
     const video = document.getElementById("video");
     const canvas = document.getElementById("overlay");
@@ -133,14 +121,12 @@
     let mirror = true;
     let moodHistory = JSON.parse(localStorage.getItem("moodHistory") || "[]");
 
-    // ✅ Update history UI
     function updateHistory() {
       historyEl.innerHTML = moodHistory.map((m, i) => `${i+1}. ${m}`).join("<br>");
       localStorage.setItem("moodHistory", JSON.stringify(moodHistory));
     }
     updateHistory();
 
-    // ✅ Load models from working CDN repo
     async function loadModels() {
       moodEl.textContent = "Loading models...";
       try {
@@ -155,7 +141,6 @@
       }
     }
 
-    // ✅ Start video
     async function startVideo() {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ video: {} });
@@ -166,7 +151,6 @@
       }
     }
 
-    // ✅ Snapshot function
     function takeSnapshot() {
       const snapCanvas = document.createElement("canvas");
       snapCanvas.width = video.videoWidth;
@@ -183,7 +167,6 @@
       link.click();
     }
 
-    // ✅ Mirror toggle
     mirrorBtn.addEventListener("click", () => {
       mirror = !mirror;
       video.style.transform = mirror ? "scaleX(-1)" : "scaleX(1)";
@@ -197,12 +180,10 @@
       statusEl.textContent = "History cleared ✅";
     });
 
-    // ✅ Detection loop
     video.addEventListener("play", () => {
       const displaySize = { width: video.videoWidth, height: video.videoHeight };
       canvas.width = displaySize.width;
       canvas.height = displaySize.height;
-
       const ctx = canvas.getContext("2d");
 
       setInterval(async () => {
@@ -230,7 +211,6 @@
       }, 200);
     });
 
-    // ✅ Init
     loadModels().then(startVideo);
   </script>
 </body>
