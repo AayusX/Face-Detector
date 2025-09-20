@@ -1,733 +1,106 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Mood Detector — Polished</title>
-  <meta name="description" content="Face detection + mood recognition demo using face-api.js (CDN).">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Mood Detector</title>
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600&display=swap');
-
-    :root{
-      --accent: #00ffcc;
-      --bg: #0f0f11;
-      --panel: #121213;
-      --muted: #9aa6a6;
-      --glass: rgba(255,255,255,0.02);
-      --border: rgba(0,255,204,0.18);
-      --radius: 12px;
-      --pad: 14px;
+    body {
+      background: #0a0a0a;
+      color: #00f2ff;
+      font-family: "Orbitron", sans-serif;
+      text-align: center;
+      margin: 0;
+      overflow: hidden;
     }
-
-    *{box-sizing:border-box}
-    html,body{height:100%}
-    body{
-      margin:0;
-      font-family: 'Fira Code', monospace;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      flex-direction:column;
-      gap:18px;
-      min-height:100vh;
-      background:
-        radial-gradient(circle at 10% 10%, rgba(0,255,204,0.02), transparent 10%),
-        linear-gradient(180deg,#050506,#0b0b0c 40%,#0f0f11);
-      color:var(--accent);
-      -webkit-font-smoothing:antialiased;
-      -moz-osx-font-smoothing:grayscale;
-      padding:18px;
+    video, canvas {
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      top: 60px;
+      border: 3px solid #00f2ff;
+      border-radius: 16px;
+      box-shadow: 0 0 25px #00f2ff;
     }
-
-    .app {
-      width:100%;
-      max-width:900px;
-      display:grid;
-      grid-template-columns: 1fr 360px;
-      gap:18px;
-      align-items:start;
+    h1 {
+      margin: 20px 0 0;
+      font-size: 28px;
+      text-shadow: 0 0 15px #00f2ff;
     }
-
-    /* Responsive stack */
-    @media (max-width:980px){
-      .app{grid-template-columns:1fr; padding-bottom:18px}
+    #mood {
+      margin-top: 540px;
+      font-size: 22px;
+      color: #ff00ff;
+      text-shadow: 0 0 20px #ff00ff, 0 0 40px #ff00ff;
     }
-
-    .video-card{
-      background:var(--panel);
-      border-radius:var(--radius);
-      padding:12px;
-      border:1px solid var(--border);
-      box-shadow:0 8px 30px rgba(0,0,0,0.6);
-      position:relative;
-      overflow:hidden;
+    #history {
+      margin-top: 15px;
+      font-size: 14px;
+      color: #888;
+      max-width: 90%;
+      margin-left: auto;
+      margin-right: auto;
+      word-wrap: break-word;
     }
-
-    .video-wrapper{
-      position:relative;
-      width:100%;
-      background:linear-gradient(180deg,#0a0a0b,#111113);
-      border-radius:10px;
-      overflow:hidden;
-    }
-
-    video{
-      width:100%;
-      height:auto;
-      display:block;
-      background:#000;
-      transform: scaleX(-1); /* mirror */
-    }
-
-    canvas{
-      position:absolute;
-      left:0;
-      top:0;
-      pointer-events:none;
-      transform: scaleX(-1); /* mirror overlay to match video */
-    }
-
-    .controls{
-      margin-top:12px;
-      display:flex;
-      flex-wrap:wrap;
-      gap:8px;
-      align-items:center;
-    }
-
-    .btn{
-      background:transparent;
-      color:var(--accent);
-      border:1px solid rgba(0,255,204,0.12);
-      padding:8px 10px;
-      border-radius:10px;
-      cursor:pointer;
-      font-weight:600;
-      font-size:13px;
-    }
-    .btn.primary{
-      background:linear-gradient(90deg,var(--accent),#66ffe0);
-      color:#001;
-      box-shadow:0 6px 18px rgba(0,255,204,0.06);
-    }
-    .btn.warn{border-color:rgba(255,69,0,0.2); color:#ffb199}
-
-    .terminal{
-      background:linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.02));
-      border-radius:var(--radius);
-      border:1px solid var(--border);
-      padding:12px;
-      max-height:78vh;
-      overflow:auto;
-    }
-
-    .status-row{
-      display:flex;
-      gap:10px;
-      align-items:center;
-      justify-content:space-between;
-    }
-
-    .mood-display{
-      font-size:18px;
-      font-weight:700;
-      color:var(--accent);
-      text-shadow:0 0 8px rgba(0,255,204,0.08);
-      margin:0;
-    }
-
-    .meta{
-      color:var(--muted);
-      font-size:12px;
-    }
-
-    .loading-bar{
-      height:8px;
-      background:#071;
-      border-radius:6px;
-      overflow:hidden;
-      margin-top:10px;
-      border:1px solid rgba(0,255,204,0.06);
-    }
-    .loading-bar-progress{
-      height:100%;
-      width:0%;
-      background:linear-gradient(90deg,var(--accent),#8bffc9);
-      transition:width 250ms linear;
-    }
-
-    .small{
-      font-size:12px;
-      color:var(--muted);
-    }
-
-    .panel-section{
-      background:var(--glass);
-      border-radius:8px;
-      padding:10px;
-      margin-top:10px;
-      border:1px solid rgba(255,255,255,0.02);
-    }
-
-    label.switch{
-      display:flex;
-      gap:8px;
-      align-items:center;
-      user-select:none;
-    }
-
-    input[type="checkbox"]{transform:scale(1.05); cursor:pointer}
-
-    .history-list{
-      margin-top:8px;
-      display:flex;
-      flex-direction:column;
-      gap:6px;
-      max-height:220px;
-      overflow:auto;
-      padding-right:6px;
-    }
-
-    .history-item{
-      background:rgba(255,255,255,0.01);
-      border-radius:6px;
-      padding:6px 8px;
-      display:flex;
-      justify-content:space-between;
-      align-items:center;
-      font-size:13px;
-      color:var(--muted);
-    }
-
-    .webhook-row input[type="url"], .webhook-row input[type="text"]{
-      width:100%;
-      padding:8px;
-      border-radius:8px;
-      border:1px solid rgba(255,255,255,0.03);
-      background:transparent;
-      color:var(--accent);
-      margin-top:6px;
-      font-size:13px;
-    }
-
-    .error{
-      color:#ff6b6b;
-      font-size:13px;
-      margin-top:8px;
-    }
-
-    .stats{
-      display:flex;
-      gap:8px;
-      margin-top:8px;
-      flex-wrap:wrap;
-    }
-    .stat-pill{
-      padding:6px 8px;
-      border-radius:8px;
-      background:rgba(255,255,255,0.02);
-      border:1px solid rgba(0,255,204,0.04);
-      color:var(--muted);
-      font-size:13px;
-    }
-
-    .footer-small{font-size:12px; color:var(--muted); margin-top:10px}
   </style>
 </head>
 <body>
-  <div class="app">
-    <!-- Video area -->
-    <div class="video-card">
-      <div class="video-wrapper">
-        <video id="video" autoplay muted playsinline></video>
-        <canvas id="overlay"></canvas>
-      </div>
+  <h1>⚡ AI Mood Detector ⚡</h1>
+  <video id="video" width="480" height="360" autoplay muted></video>
+  <canvas id="overlay" width="480" height="360"></canvas>
+  <div id="mood">Detecting mood...</div>
+  <div id="history"></div>
 
-      <div class="controls">
-        <button id="startStopBtn" class="btn primary">Start</button>
-        <button id="snapshotBtn" class="btn">Take snapshot</button>
-        <button id="downloadBtn" class="btn">Download last snapshot</button>
-        <button id="clearHistory" class="btn warn">Clear history</button>
-
-        <div style="margin-left:auto; display:flex; gap:8px; align-items:center;">
-          <div class="small meta" id="fps">FPS: —</div>
-          <div class="small meta" id="detTime">Detect: — ms</div>
-        </div>
-      </div>
-
-      <div class="panel-section" style="margin-top:12px;">
-        <div class="small meta">Tips: Good lighting helps detection. Keep camera roughly facing your face.</div>
-      </div>
-    </div>
-
-    <!-- Terminal / Controls -->
-    <div class="terminal">
-      <div class="status-row">
-        <div>
-          <p class="mood-display" id="moodText">Loading models…</p>
-          <div class="small meta" id="modelStatus">Models: —</div>
-        </div>
-      </div>
-
-      <div class="loading-bar" aria-hidden="true" title="Model load progress">
-        <div id="loadProgress" class="loading-bar-progress"></div>
-      </div>
-
-      <div class="panel-section">
-        <div style="display:flex; gap:8px; align-items:center;">
-          <label class="switch"><input id="sendSnapToggle" type="checkbox" /><span class="small">Send snapshots to webhook</span></label>
-        </div>
-
-        <div class="webhook-row" style="margin-top:8px;">
-          <input id="webhookURL" type="url" placeholder="Webhook URL (paste target endpoint here)" />
-          <div class="small meta" style="margin-top:6px;">Only used when snapshot sending is enabled. Off by default.</div>
-        </div>
-
-        <div style="display:flex; gap:8px; margin-top:8px;">
-          <button id="toggleMirrorBtn" class="btn">Toggle Mirror</button>
-          <button id="demoResetBtn" class="btn">Reset view</button>
-        </div>
-      </div>
-
-      <div class="panel-section">
-        <div style="display:flex; justify-content:space-between; align-items:center;">
-          <div class="small meta">Mood history (last 20)</div>
-          <div class="small meta">Counts saved in localStorage</div>
-        </div>
-
-        <div class="history-list" id="historyList" aria-live="polite"></div>
-
-        <div class="stats" id="countsRow" aria-hidden="true"></div>
-      </div>
-
-      <div class="panel-section">
-        <div class="small meta">Status / errors</div>
-        <div id="statusMsg" class="error" role="status" aria-live="polite"></div>
-      </div>
-
-      <div class="footer-small">Ready to deploy to GitHub Pages — paste this `index.html` in a repo and enable Pages (branch: main / root). Uses face-api.js CDN weights.</div>
-    </div>
-  </div>
-
-  <!-- face-api.js from CDN -->
-  <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
-
+  <!-- Face API via CDN -->
+  <script defer src="https://cdn.jsdelivr.net/npm/face-api.js"></script>
   <script>
-  (function () {
-    // Elements
-    const video = document.getElementById('video');
-    const overlay = document.getElementById('overlay');
-    const moodText = document.getElementById('moodText');
-    const modelStatus = document.getElementById('modelStatus');
-    const loadProgress = document.getElementById('loadProgress');
-    const startStopBtn = document.getElementById('startStopBtn');
-    const sendSnapToggle = document.getElementById('sendSnapToggle');
-    const webhookURL = document.getElementById('webhookURL');
-    const snapshotBtn = document.getElementById('snapshotBtn');
-    const downloadBtn = document.getElementById('downloadBtn');
-    const historyList = document.getElementById('historyList');
-    const countsRow = document.getElementById('countsRow');
-    const fpsLabel = document.getElementById('fps');
-    const detTimeLabel = document.getElementById('detTime');
-    const statusMsg = document.getElementById('statusMsg');
-    const clearHistoryBtn = document.getElementById('clearHistory');
-    const toggleMirrorBtn = document.getElementById('toggleMirrorBtn');
-    const demoResetBtn = document.getElementById('demoResetBtn');
+    const video = document.getElementById("video");
+    const overlay = document.getElementById("overlay");
+    const ctx = overlay.getContext("2d");
+    const moodEl = document.getElementById("mood");
+    const historyEl = document.getElementById("history");
+    let history = [];
 
-    // Settings
-    const MODEL_CDN_BASE = "https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/weights";
-    const DETECT_INTERVAL = 300; // ms (~3 FPS)
-    const MAX_HISTORY = 20;
-    const TINYDETECTOR_OPTIONS = new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.45 });
+    async function start() {
+      moodEl.textContent = "Loading models...";
+      await faceapi.nets.tinyFaceDetector.loadFromUri("https://cdn.jsdelivr.net/npm/face-api.js/weights");
+      await faceapi.nets.faceExpressionNet.loadFromUri("https://cdn.jsdelivr.net/npm/face-api.js/weights");
 
-    // State
-    let stream = null;
-    let isRunning = false;
-    let isDetecting = false;
-    let lastSnapshotBlob = null;
-    let history = JSON.parse(localStorage.getItem('moodHistory') || '[]') || [];
-    let counts = JSON.parse(localStorage.getItem('moodCounts') || '{}') || {};
-    let lastDetectTime = 0;
-    let fpsCounter = { frames: 0, lastTick: performance.now(), fps: 0 };
-
-    // Mood color mapping
-    const moodColors = {
-      happy: "#FFD700",
-      sad: "#1E90FF",
-      angry: "#FF4500",
-      surprised: "#FF69B4",
-      neutral: "#00ffcc",
-      fearful: "#8A2BE2",
-      disgusted: "#228B22"
-    };
-
-    // Utility: update UI status
-    function setStatus(msg, isError=false) {
-      statusMsg.textContent = msg || '';
-      if (isError) {
-        statusMsg.style.color = '#ff6b6b';
-      } else {
-        statusMsg.style.color = 'var(--muted)';
-      }
+      const stream = await navigator.mediaDevices.getUserMedia({ video: {} });
+      video.srcObject = stream;
+      moodEl.textContent = "Models loaded. Detecting mood...";
     }
 
-    // Update load progress UI (0..100)
-    function setLoadProgress(pct, text) {
-      loadProgress.style.width = Math.max(0, Math.min(100, pct)) + '%';
-      modelStatus.textContent = text || '';
-    }
+    video.addEventListener("play", () => {
+      const displaySize = { width: video.width, height: video.height };
+      faceapi.matchDimensions(overlay, displaySize);
 
-    // Save history & counts to localStorage
-    function persistHistory() {
-      localStorage.setItem('moodHistory', JSON.stringify(history));
-      localStorage.setItem('moodCounts', JSON.stringify(counts));
-    }
+      setInterval(async () => {
+        const detections = await faceapi
+          .detectAllFaces(video, new faceapi.TinyFaceDetectorOptions())
+          .withFaceExpressions();
 
-    // Add mood to history
-    function pushMood(mood) {
-      const ts = new Date().toLocaleTimeString();
-      history.unshift({ mood, ts });
-      if (history.length > MAX_HISTORY) history.length = MAX_HISTORY;
-      counts[mood] = (counts[mood] || 0) + 1;
-      persistHistory();
-      renderHistory();
-    }
-
-    // Render mood history and counts
-    function renderHistory() {
-      historyList.innerHTML = '';
-      history.forEach(item => {
-        const div = document.createElement('div');
-        div.className = 'history-item';
-        div.innerHTML = `<div style="display:flex;gap:8px;align-items:center;">
-                           <div style="width:10px;height:10px;border-radius:50%;background:${moodColors[item.mood]||'var(--accent)'}"></div>
-                           <div style="font-size:13px;color:var(--muted)">${item.mood}</div>
-                         </div>
-                         <div style="font-size:12px;color:var(--muted)">${item.ts}</div>`;
-        historyList.appendChild(div);
-      });
-
-      // counts
-      countsRow.innerHTML = '';
-      Object.keys(counts).sort().forEach(k => {
-        const span = document.createElement('div');
-        span.className = 'stat-pill';
-        span.textContent = `${k}: ${counts[k]}`;
-        countsRow.appendChild(span);
-      });
-    }
-
-    // Wait for face-api to exist (simple wait)
-    async function waitForFaceApi(timeout = 8000) {
-      const start = performance.now();
-      while (typeof faceapi === 'undefined') {
-        if (performance.now() - start > timeout) {
-          throw new Error('face-api.js failed to load in time. Check network or CDN.');
-        }
-        await new Promise(r => setTimeout(r, 50));
-      }
-    }
-
-    // Load models with progress (per-model increments)
-    async function loadModelsWithProgress() {
-      const modelsToLoad = [
-        { name: 'tinyFaceDetector', fn: () => faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_CDN_BASE) },
-        { name: 'faceExpressionNet', fn: () => faceapi.nets.faceExpressionNet.loadFromUri(MODEL_CDN_BASE) }
-      ];
-      setLoadProgress(6, 'Starting model load...');
-      for (let i = 0; i < modelsToLoad.length; i++) {
-        const model = modelsToLoad[i];
-        try {
-          setLoadProgress(6 + ((i / modelsToLoad.length) * 70), `Loading ${model.name}...`);
-          await model.fn();
-          setLoadProgress(6 + (((i + 1) / modelsToLoad.length) * 70), `${model.name} loaded`);
-        } catch (err) {
-          // If CDN load fails, show helpful guidance
-          setStatus(`Failed to load ${model.name} from CDN. You can host models yourself (see README)`, true);
-          throw err;
-        }
-      }
-      setLoadProgress(95, 'Finalizing...');
-      // small delay so UI shows full progress
-      await new Promise(r => setTimeout(r, 180));
-      setLoadProgress(100, 'Models ready');
-      modelStatus.textContent = 'Models loaded (from CDN)';
-    }
-
-    // Start webcam
-    async function startCamera() {
-      if (stream) return;
-      try {
-        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } }, audio: false });
-        video.srcObject = stream;
-        startStopBtn.textContent = 'Stop';
-        isRunning = true;
-        setStatus('');
-      } catch (err) {
-        setStatus('Camera access denied or not available. Ensure camera is connected and permission is allowed.', true);
-        throw err;
-      }
-    }
-
-    // Stop webcam
-    function stopCamera() {
-      if (stream) {
-        stream.getTracks().forEach(t => t.stop());
-        stream = null;
-      }
-      video.pause();
-      video.srcObject = null;
-      startStopBtn.textContent = 'Start';
-      isRunning = false;
-      isDetecting = false;
-    }
-
-    // Snapshot (returns Blob); optionally sends to webhook when enabled
-    async function takeSnapshot(alsoSend = false) {
-      if (!video || !video.videoWidth) {
-        setStatus('Video not ready for snapshot', true);
-        return null;
-      }
-      const c = document.createElement('canvas');
-      c.width = video.videoWidth;
-      c.height = video.videoHeight;
-      const ctx = c.getContext('2d');
-      // mirror back to normal for saved image (flip horizontally)
-      ctx.save();
-      ctx.scale(-1, 1);
-      ctx.drawImage(video, -c.width, 0, c.width, c.height);
-      ctx.restore();
-
-      return new Promise(resolve => {
-        c.toBlob(async (blob) => {
-          lastSnapshotBlob = blob;
-          if (alsoSend && sendSnapToggle.checked) {
-            const url = webhookURL.value.trim();
-            if (!url) {
-              setStatus('Webhook URL empty — cannot send snapshot', true);
-            } else {
-              try {
-                await sendBlobToWebhook(url, blob);
-                setStatus('Snapshot sent to webhook (response OK)');
-              } catch (err) {
-                setStatus('Failed to send snapshot to webhook: ' + err.message, true);
-              }
-            }
-          }
-          resolve(blob);
-        }, 'image/png');
-      });
-    }
-
-    // Send blob to webhook (form-data)
-    async function sendBlobToWebhook(url, blob) {
-      const form = new FormData();
-      form.append('content', 'Snapshot from mood-detector');
-      form.append('file', blob, 'snapshot.png');
-      const resp = await fetch(url, { method: 'POST', body: form });
-      if (!resp.ok) {
-        throw new Error(`HTTP ${resp.status}`);
-      }
-      return await resp.text();
-    }
-
-    // Download last snapshot
-    function downloadLastSnapshot() {
-      if (!lastSnapshotBlob) {
-        setStatus('No snapshot available. Take one first.', true);
-        return;
-      }
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(lastSnapshotBlob);
-      a.download = `mood-snapshot-${Date.now()}.png`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-    }
-
-    // Resize canvas to video size
-    function resizeCanvasToVideo() {
-      const w = video.videoWidth || video.clientWidth || 640;
-      const h = video.videoHeight || video.clientHeight || 480;
-      overlay.width = w;
-      overlay.height = h;
-      overlay.style.width = w + 'px';
-      overlay.style.height = h + 'px';
-    }
-
-    // Detection loop (controlled)
-    async function detectionLoop() {
-      if (!isRunning) {
-        isDetecting = false;
-        return;
-      }
-      if (isDetecting) return; // safety: avoid overlapping
-      isDetecting = true;
-
-      // wait for video to be ready
-      if (!video.videoWidth) {
-        // wait a bit
-        await new Promise(r => setTimeout(r, 150));
-        isDetecting = false;
-        setTimeout(detectionLoop, DETECT_INTERVAL);
-        return;
-      }
-
-      const t0 = performance.now();
-      try {
-        const result = await faceapi.detectSingleFace(video, TINYDETECTOR_OPTIONS).withFaceExpressions();
-        const t1 = performance.now();
-        const dt = Math.round(t1 - t0);
-        detTimeLabel.textContent = `Detect: ${dt} ms`;
-
-        // fps calc
-        fpsCounter.frames++;
-        const now = performance.now();
-        if (now - fpsCounter.lastTick >= 1000) {
-          fpsCounter.fps = Math.round((fpsCounter.frames * 1000) / (now - fpsCounter.lastTick));
-          fpsCounter.frames = 0;
-          fpsCounter.lastTick = now;
-          fpsLabel.textContent = `FPS: ${fpsCounter.fps}`;
-        }
-
-        const ctx = overlay.getContext('2d');
         ctx.clearRect(0, 0, overlay.width, overlay.height);
+        const resized = faceapi.resizeResults(detections, displaySize);
+        faceapi.draw.drawDetections(overlay, resized);
+        faceapi.draw.drawFaceExpressions(overlay, resized);
 
-        if (result) {
-          const displaySize = { width: overlay.width, height: overlay.height };
-          const resized = faceapi.resizeResults(result, displaySize);
-          faceapi.draw.drawDetections(overlay, resized);
-          faceapi.draw.drawFaceExpressions(overlay, resized);
-
-          // determine top expression
-          const expressions = result.expressions;
-          const top = Object.keys(expressions).reduce((a, b) => expressions[a] > expressions[b] ? a : b);
-          moodText.textContent = `Mood: ${top}`;
-          const color = moodColors[top] || 'var(--accent)';
-          moodText.style.color = color;
-          moodText.style.textShadow = `0 0 10px ${color}`;
-          pushMood(top);
+        if (detections.length > 0) {
+          const emotions = detections[0].expressions;
+          const mood = Object.keys(emotions).reduce((a, b) =>
+            emotions[a] > emotions[b] ? a : b
+          );
+          moodEl.textContent = `You look: ${mood}`;
+          history.push(mood);
+          if (history.length > 20) history.shift();
+          historyEl.textContent = "History: " + history.join(", ");
         } else {
-          moodText.textContent = 'No face detected';
-          moodText.style.color = 'var(--accent)';
-          moodText.style.textShadow = `0 0 8px var(--accent)`;
+          moodEl.textContent = "No face detected";
         }
-      } catch (err) {
-        console.error('Detection error:', err);
-        setStatus('Detection error: ' + err.message, true);
-      } finally {
-        isDetecting = false;
-        // schedule next detection
-        setTimeout(() => detectionLoop(), DETECT_INTERVAL);
-      }
-    }
-
-    // Bind UI
-    startStopBtn.addEventListener('click', async () => {
-      if (!isRunning) {
-        try {
-          await startCamera();
-          // wait until video has metadata
-          video.addEventListener('loadedmetadata', function once() {
-            video.play().catch(()=>{});
-            resizeCanvasToVideo();
-            detectionLoop();
-            video.removeEventListener('loadedmetadata', once);
-          });
-        } catch (err) {
-          console.error(err);
-        }
-      } else {
-        stopCamera();
-      }
+      }, 300);
     });
 
-    snapshotBtn.addEventListener('click', async () => {
-      setStatus('Taking snapshot…');
-      const blob = await takeSnapshot(true); // also send if enabled
-      if (blob) {
-        setStatus('Snapshot taken (download or send).');
-      }
-    });
-
-    downloadBtn.addEventListener('click', () => {
-      downloadLastSnapshot();
-    });
-
-    clearHistoryBtn.addEventListener('click', () => {
-      if (!confirm('Clear mood history and counts?')) return;
-      history = [];
-      counts = {};
-      persistHistory();
-      renderHistory();
-      setStatus('History cleared.');
-    });
-
-    toggleMirrorBtn.addEventListener('click', () => {
-      const current = video.style.transform || 'scaleX(-1)';
-      if (current.includes('-1')) {
-        video.style.transform = '';
-        overlay.style.transform = '';
-      } else {
-        video.style.transform = 'scaleX(-1)';
-        overlay.style.transform = 'scaleX(-1)';
-      }
-    });
-
-    demoResetBtn.addEventListener('click', () => {
-      // small UI reset
-      setStatus('');
-      modelStatus.textContent = '';
-    });
-
-    // download last snapshot via Ctrl+S fallback (optional)
-    window.addEventListener('keydown', (e) => {
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
-        if (lastSnapshotBlob) {
-          e.preventDefault();
-          downloadLastSnapshot();
-        }
-      }
-    });
-
-    // Save/restore webhook toggle (optional)
-    sendSnapToggle.addEventListener('change', () => {
-      setStatus(sendSnapToggle.checked ? 'Snapshot sending enabled (paste webhook URL).' : 'Snapshot sending disabled.');
-    });
-
-    // Set up initial history UI
-    renderHistory();
-
-    // Main init flow
-    (async function init() {
-      try {
-        await waitForFaceApi();
-        setStatus('face-api.js loaded, loading models…');
-        await loadModelsWithProgress();
-        setStatus('Models loaded. Click Start to enable camera.');
-        moodText.textContent = 'Models loaded — click Start';
-        setLoadProgress(100, 'Ready');
-      } catch (err) {
-        console.error(err);
-        setStatus('Failed to initialize models or face-api. See console for details.', true);
-        setLoadProgress(0, 'Model load failed');
-      }
-    })();
-
-    // Resize canvas whenever video size changes
-    let resizeObserver = null;
-    video.addEventListener('play', () => {
-      resizeCanvasToVideo();
-      if (resizeObserver) resizeObserver.disconnect();
-      resizeObserver = new ResizeObserver(resizeCanvasToVideo);
-      resizeObserver.observe(video);
-    });
-
-    // Clean up on unload
-    window.addEventListener('beforeunload', () => {
-      stopCamera();
-    });
-  })();
+    start();
   </script>
 </body>
 </html>
